@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)\
 
 Gem::Specification.new do |spec|
   spec.name          = "fastly_fluent"
-  spec.version       = '0.0.1'
+  spec.version       = '0.0.2'
   spec.authors       = ["Benjamin Bryant"]
   spec.email         = ["benjaminhbryant@gmail.com"]
   spec.description   = %q{fluent plugin for JSON encoded fastly syslogs}

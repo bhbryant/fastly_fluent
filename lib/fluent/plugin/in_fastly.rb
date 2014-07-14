@@ -29,6 +29,7 @@ module Fluent
       super
       require 'cool.io'
       require 'fluent/plugin/socket_util'
+      require 'cgi'
     end
 
     config_param :port, :integer, :default => 5140
@@ -89,8 +90,33 @@ module Fluent
         tag = record.delete('tag')
 
         message = JSON.parse(record.delete('message'))
+
+        ## copy message params into message, skipping null items
         message.each do |k,v|
           record[k] = v unless v == "(null)"
+        end
+
+        ## parse url
+        if message['url']
+          uri = URI.parse(message['url'])
+          record['path'] = uri.path
+
+
+          # emit query params
+          unless uri.query.nil? || uri.query == ""
+
+            CGI::parse(uri.query).each do |k,v|
+              if record[k].nil?
+                if v.count > 1
+                  record[k] = v
+                elsif v.count == 1
+                  record[k] = v.first
+                else
+                  record[k] = true
+                end
+              end
+            end
+          end
         end
 
 
