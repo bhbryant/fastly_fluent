@@ -30,6 +30,7 @@ module Fluent
       require 'cool.io'
       require 'fluent/plugin/socket_util'
       require 'cgi'
+      require 'useragent'
     end
 
     config_param :port, :integer, :default => 5140
@@ -97,27 +98,16 @@ module Fluent
         end
 
         ## parse url
-        if message['url']
-          uri = URI.parse(message['url'])
-          record['path'] = uri.path
+        record = parse_url(message['url']).merge(record) if message['url']
+
+        record = parse_url(message['referer'], prefix: 'referer_', no_params: true).merge(record) if message['referer']
+
+        record = parse_user_agent(message['user_agent']).merge(record) if message['user_agent']
 
 
-          # emit query params
-          unless uri.query.nil? || uri.query == ""
 
-            CGI::parse(uri.query).each do |k,v|
-              if record[k].nil?
-                if v.count > 1
-                  record[k] = v
-                elsif v.count == 1
-                  record[k] = v.first
-                else
-                  record[k] = true
-                end
-              end
-            end
-          end
-        end
+
+
 
 
         emit(tag, time, record)
@@ -146,5 +136,65 @@ module Fluent
     rescue => e
       log.error "fastly failed to emit", :error => e.to_s, :error_class => e.class.to_s, :tag => tag, :record => Yajl.dump(record)
     end
+
+    def parse_url(url, options = {})
+
+      out = {}
+      uri = URI.parse(url)
+
+      key_prefix = options[:prefix] || ""
+      no_params = options[:no_params] || false
+
+
+      out[key_prefix + 'scheme'] = uri.scheme if uri.scheme
+      out[key_prefix + 'host'] = uri.host if uri.host
+      out[key_prefix + 'path'] = uri.path if uri.path
+      #out[key_prefix + 'fragment'] = uri.fragment if uri.fragment
+
+
+
+      # emit query params
+      unless no_params || uri.query.nil? || uri.query == ""
+
+
+        CGI::parse(uri.query).each do |k,v|
+
+          prefix_key = key_prefix + k
+
+          if out[prefix_key].nil?
+
+            if v.count > 1
+              out[prefix_key] = v
+            elsif v.count == 1
+              out[prefix_key] = v.first
+            else
+              out[prefix_key] = true
+            end
+          end
+        end
+      end
+
+      out
+    rescue => e
+      log.error "url parse error", :error => e.to_s
+      out
+    end
+
+    def parse_user_agent(ua)
+      out = {}
+
+      p = UserAgent.parse(ua)
+
+      out["user_agent_browser"] = p.browser
+      out["user_agent_platform"] = p.platform
+      out["user_agent_version"] = p.version.to_s
+      out["user_agent_type"] = p.mobile? ? "mobile" : (p.bot? ? "bot" : "desktop")
+
+      out
+    rescue => e
+      log.error "user agent parse error", :error => e.to_s
+      out
+    end
+
   end
 end

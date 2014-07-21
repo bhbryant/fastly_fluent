@@ -77,7 +77,7 @@ class FastlyInputTest < Test::Unit::TestCase
     configs.each_pair { |k, v|
       d = create_driver(v)
 
-      test = "<134>2014-07-10T23:18:15Z cache-hk91 td.server.requests[11226]: {\"ip\":\"166.137.213.198\",\"client_id\":\"17a8e5f8f64a9a7c85d1ccab51bcfdf6\",\"status\":200,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_3 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B511 Safari/9537.53\",\"null_val\":\"(null)\",\"url\":\"/my/path?query=param&bob=first&bob=second&sally\"}"
+      test = "<134>2014-07-10T23:18:15Z cache-hk91 td.server.requests[11226]: {\"ip\":\"166.137.213.198\",\"client_id\":\"17a8e5f8f64a9a7c85d1ccab51bcfdf6\",\"status\":200,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_3 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B511 Safari/9537.53\",\"null_val\":\"(null)\",\"url\":\"/my/path?query=param&bob=first&bob=second&sally&status=300\",\"referer\":\"https://m.facebook.com/l.php?u=https%3A%2F%2Fgetpebble.com%2F%3Futm_source%3Dfacebook%26utm_medium%3Dcpc%26utm_content%3Dxxx%26utm_campaign%3Dxxx&h=hAQGU-qkW&s=1\"}"
 
 
 
@@ -89,7 +89,7 @@ class FastlyInputTest < Test::Unit::TestCase
         sleep 1
       end
 
-      tag =d.emits.first[0]
+      tag = d.emits.first[0]
       time = d.emits.first[1]
       record = d.emits.first[2]
 
@@ -101,6 +101,20 @@ class FastlyInputTest < Test::Unit::TestCase
       assert_equal(record['query'], 'param')
       assert_equal(record['bob'], ["first","second"])
       assert_equal(record['sally'], true)
+
+
+      assert_equal(record['status'], 200) ## ensure reverse merge
+
+      assert_equal(record['referer_host'], "m.facebook.com")
+      assert_equal(record['referer_path'], "/l.php")
+      assert_equal(record['referer_s'], nil)
+
+      assert_equal(record['user_agent_platform'], "iPhone")
+      assert_equal(record['user_agent_browser'], "Safari")
+      assert_equal(record['user_agent_version'], "7.0.3")
+      assert_equal(record['user_agent_type'], "mobile")
+
+
 
     }
   end
